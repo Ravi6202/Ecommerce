@@ -2,7 +2,7 @@ module.exports = {
   routes: [
     {
       method: "POST",
-      path: "/order/:productId",
+      path: "/order",
       handler: "customorder.orderFromCart",
       config: {
         auth: {},
@@ -10,7 +10,7 @@ module.exports = {
     },
     {
       method:"GET",
-      path:"/vieworder/:cartId",
+      path:"/vieworder",
       handler:"customorder.viewOrder",
       config:{
         auth:{},

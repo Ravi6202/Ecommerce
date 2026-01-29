@@ -9,8 +9,7 @@
     "displayName": "User"
   },
   "options": {
-    "draftAndPublish": false,
-    "timestamps": true
+    "draftAndPublish": false
   },
   "attributes": {
     "username": {
@@ -66,7 +65,7 @@
       "inversedBy": "users",
       "configurable": false
     },
-    "order": {
+    "orders": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::order.order",

@@ -1,70 +1,87 @@
 "use strict";
+
+//const order = require("./order");
+
 module.exports = {
   async orderFromCart(ctx) {
     try {
+      //Check logged-in user
       const user = ctx.state.user;
       if (!user) return ctx.unauthorized("You must be logged in");
-      const userId = user.id;
-      console.log("ctx==>", ctx);
-      console.log("userid===>", userId);
 
-      // Fetch the user cart
+      //Fetch cart with cart_items and product
       const cart = await strapi.db.query("api::cart.cart").findOne({
-        where: { user: userId },
-        populate: ["products"],
+        where: { user: user.id },
+        populate: {
+          cart_items: {
+            populate: ["product"],
+          },
+        },
       });
-      console.log("cart===>", cart);
 
-      if (!cart || cart.products.length === 0) {
+      //Check empty cart
+      if (!cart || !cart.cart_items || cart.cart_items.length === 0) {
         return ctx.badRequest("Cart is empty");
       }
 
-      const cartItems = cart.products;
-      console.log("cartItems===>", cartItems);
+      let totalAmount = 0;
 
-      // Check stock for each product
-      for (const product of cartItems) {
-        if (product.stock < 1) {
+      //Check stock and calculate total
+      for (const item of cart.cart_items) {
+        const product = item.product;
+        const quantity = item.quantity;
+
+        // stock check using quantity
+        if (product.stock < quantity) {
           return ctx.badRequest(
             `Insufficient stock for product ${product.name}`
           );
         }
+
+        // calculate total
+        totalAmount += product.price * quantity;
       }
 
-      // Reduce stock
-      for (const product of cartItems) {
-        let updatedstock = Number(product.stock) - 1;
+      //Reduce stock
+      for (const item of cart.cart_items) {
+        const product = item.product;
+        const quantity = item.quantity;
+
         await strapi.entityService.update("api::product.product", product.id, {
-          data: { stock: updatedstock },
+          data: {
+            stock: product.stock - quantity,
+          },
         });
       }
 
-      let totalAmount = 0;
-      for (const product of cartItems) {
-        totalAmount += Number(product.price);
-      }
-      // Create order in database
-       const order = await strapi.entityService.create("api::order.order", {
+      //Create order
+      const order = await strapi.entityService.create("api::order.order", {
         data: {
-          orderNo: `ORD-${Math.floor(Math.random()*1000)}`,
-          Total_amount: totalAmount
+          user: user.id,
+          orderNo: `ORD-${Math.floor(Math.random() * 1000)}`,
+          Total_amount: totalAmount,
         },
       });
 
-      // Clear the cart
-      await strapi.entityService.update("api::cart.cart", cart.id, {
-        data: { products: null },
-      });
-      console.log("____________________________________", cartItems);
+      //Clear cart (delete cart items)
+      for (const item of cart.cart_items) {
+        await strapi.entityService.delete("api::cart-item.cart-item", item.id);
+      }
+
+      // Success response
       return ctx.send({
         message: "Order placed successfully",
-        orderedItems: cartItems.map((p) => ({
-          productId: p.id,
-          name: p.name,
-          price: p.price,
-          orderNo:order.orderNo,
-          Total_amount:order.Total_amount,
-          status:order.status
+        order: {
+          orderId: order.id,
+          orderNo: order.orderNo,
+          totalAmount: order.Total_amount,
+        },
+        orderedItems: cart.cart_items.map((item) => ({
+          productId: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+          total: item.product.price * item.quantity,
         })),
       });
     } catch (err) {
@@ -72,70 +89,43 @@ module.exports = {
       return ctx.internalServerError("Unable to place order");
     }
   },
+  // GET /api/order/vieworder
+  async viewOrder(ctx) {
+    try {
+      //Check logged-in user
+      const user = ctx.state.user;
+      if (!user) return ctx.unauthorized("You must be logged in");
 
-  //GET /api/order/vieworder
-  async viewOrder(ctx){
-    try{
-      const user=ctx.state.user;
-      if(!user) return ctx.unauthorized("you must be logged in");
-      const userId=user.id;
-      ctx.send('Order has been placed successfully');
+      // Fetch all orders of this user
+      const orders = await strapi.db.query("api::order.order").findMany({
+        where: {
+          user: user.id,
+        },
+       // orderBy: { createdAt: "desc" },
+      });
+      //If no orders found
+      if (!orders || orders.length === 0) {
+        return ctx.send({
+          message: "No orders found",
+          orders: [],
+        });
+      }
+      //Format response
+      const formattedOrders = orders.map((order) => ({
+        orderNo: order.orderNo,
+        totalAmount: order.Total_amount,
+        status: order.status || "PLACED",
+        createdAt: order.createdAt,
+      }));
+
+      //Send response
+      return ctx.send({
+        message: "Your orders",
+        orders: formattedOrders,
+      });
+    } catch (err) {
+      console.error("viewOrder ERROR:", err);
+      return ctx.internalServerError("Unable to fetch orders");
     }
-    catch(err){
-      ctx.send(err);
-    }
-  }
+  },
 };
-
-//Order /api/cart/order/:productId
-//   async orderFromCart(ctx) {
-//     try {
-//       const user = ctx.state.user;
-//       if (!user) return ctx.unauthorized("You must be logged in");
-//       const userId = user.id;
-
-//       const userData = await strapi
-//         .query("plugin::users-permissions.user")
-//         .findOne({
-//           where: { id: userId },
-//         });
-
-//       if (!userData) return ctx.unauthorized("User not found");
-
-//     //   const { cartitem } = ctx.request.body;
-//     //   if (!cartitem) return ctx.badRequest("cart item is required");
-//     //   if (cartitem.length == 0) return ctx.badRequest("cart is empty");
-//     const cart = await strapi.db.query("api::cart.cart").findOne({
-//       where: { user: userId },
-//       populate: ["products"],
-//     });
-
-//     if (!cart || cart.products.length === 0) {
-//       return ctx.badRequest("Cart is empty");
-//     }
-
-//     const cartItems = cart.products;
-
-//       for (const item of cartItems) {
-//         if (!item.productId) return ctx.badRequest("ProductId missing");
-
-//         if (item.quantity === null || item.quantity === undefined)
-//           return ctx.badRequest("Quantity missing");
-
-//         if (item.quantity <= 0) return ctx.badRequest("Invalid quantity");
-
-//         const product = await strapi.entityService.findOne(
-//           "api::product.product",
-//           item.productId
-//         );
-//         if (!product) return ctx.notFound("Product not found");
-
-//         if (product.stock < item.quantity) {
-//           return ctx.badRequest("Insufficient stock");
-//         }
-//       }
-//       ctx.send("Order placed successfully");
-//     } catch (err) {
-//       console.log(ctx.err);
-//     }
-//   },

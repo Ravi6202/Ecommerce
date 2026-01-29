@@ -1,3 +1,5 @@
+//const admin = require("../../../../config/admin");
+
 module.exports = {
   routes: [
     {
