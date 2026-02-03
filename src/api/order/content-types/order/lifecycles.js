@@ -45,7 +45,14 @@ module.exports = {
         // replyTo: "happysingh1@wattmonk.com",
         subject: "Order placed",
         text: `Your order is confirmed.`,
-        html: `<p>Your order with Order ID <strong>${order.id}</strong> <br> price:${order.Total_amount} </br> <br>Status:<strong>${order.status}</strong></br>.</p>`,
+        html: `<p style="font-family: Arial, sans-serif; color: #333; font-size: 16px; line-height: 1.5;">
+              Your order with Order ID <strong style="color: #1a73e8;">${order.id}</strong> 
+             <br> 
+            Price: <span style="font-weight: bold;">₹${order.Total_amount}</span>
+            <br>
+            Status: <strong style="color: #28a745;">${order.status}</strong>
+            </p>`,
+        //html: `<p>Your order with Order ID <strong>${order.id}</strong> <br> price:${order.Total_amount} </br> <br>Status:<strong>${order.status}</strong></br>.</p>`,
       });
     } catch (err) {
       console.error("Error :", {

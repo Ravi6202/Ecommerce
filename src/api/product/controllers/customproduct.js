@@ -85,9 +85,9 @@ module.exports = {
               stock:{$gt:0}
             },
             fields: ["name", "description", "price"],
-            populate: {
-        //      images: true,
-            },
+        //     populate: {
+        // //      images: true,
+        //     },
           }
         );
         if (!product) return ctx.notFound("Product not found");
