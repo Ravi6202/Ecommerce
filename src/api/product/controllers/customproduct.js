@@ -120,7 +120,7 @@ module.exports = {
       if (isAdmin) {
         const product = await strapi.db
           .query("api::product.product")
-          .findOne({
+          .findMany({
             where: {
               name: { $containsi: name }, // case-insensitive search
             },
@@ -135,7 +135,7 @@ module.exports = {
       }
 
       //Normal user see limited fields
-      const product = await strapi.db.query("api::product.product").findOne({
+      const product = await strapi.db.query("api::product.product").findMany({
           where: {
             name: { $containsi: name },
           },
